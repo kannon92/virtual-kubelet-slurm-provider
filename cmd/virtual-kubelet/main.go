@@ -19,12 +19,12 @@ import (
 	"strings"
 
 	"github.com/sirupsen/logrus"
-	"github.com/virtual-kubelet/cri"
 	cli "github.com/virtual-kubelet/node-cli"
 	logruscli "github.com/virtual-kubelet/node-cli/logrus"
 	opencensuscli "github.com/virtual-kubelet/node-cli/opencensus"
 	"github.com/virtual-kubelet/node-cli/opts"
 	"github.com/virtual-kubelet/node-cli/provider"
+	slurm "github.com/virtual-kubelet/virtual-kubelet-slurm-provider"
 	"github.com/virtual-kubelet/virtual-kubelet/log"
 	logruslogger "github.com/virtual-kubelet/virtual-kubelet/log/logrus"
 	"github.com/virtual-kubelet/virtual-kubelet/trace"
@@ -47,11 +47,7 @@ func main() {
 	logConfig := &logruscli.Config{LogLevel: "info"}
 
 	trace.T = opencensus.Adapter{}
-	traceConfig := opencensuscli.Config{
-		AvailableExporters: map[string]opencensuscli.ExporterInitFunc{
-			"ocagent": initOCAgent,
-		},
-	}
+	traceConfig := opencensuscli.Config{}
 
 	o := opts.New()
 	o.Provider = "slurm"
@@ -60,7 +56,7 @@ func main() {
 		cli.WithBaseOpts(o),
 		cli.WithCLIVersion(buildVersion, buildTime),
 		cli.WithProvider("slurm", func(cfg provider.InitConfig) (provider.Provider, error) {
-			return cri.NewProvider(cfg.NodeName, cfg.OperatingSystem, cfg.InternalIP, cfg.ResourceManager, cfg.DaemonPort)
+			return slurm.NewProvider(cfg.ResourceManager, cfg.NodeName)
 		}),
 		cli.WithPersistentFlags(logConfig.FlagSet()),
 		cli.WithPersistentPreRunCallback(func() error {
@@ -75,7 +71,7 @@ func main() {
 		log.G(ctx).Fatal(err)
 	}
 
-	if err := node.Run(); err != nil {
+	if err := node.Run(ctx); err != nil {
 		log.G(ctx).Fatal(err)
 	}
 }
